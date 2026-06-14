@@ -1,0 +1,61 @@
+{
+  "_meta": { "type": "slack", "note": "Synthetic Slack export. Two kinds of threads: live incident chatter and historical Q&A. Each thread id IS its source_id." },
+  "threads": [
+    {
+      "id": "SLK-001",
+      "channel": "#incidents",
+      "date": "2026-06-03",
+      "kind": "incident_chatter",
+      "messages": [
+        { "user": "Priya Nair", "ts": "14:02", "text": "checkout error rate is spiking — 40% 5xx on checkout-svc, started right as the v4.2.0 deploy began." },
+        { "user": "Priya Nair", "ts": "14:04", "text": "DB dashboard shows lock waits piling up on the orders table. Writes are blocked." },
+        { "user": "Marcus Chen", "ts": "14:06", "text": "The deploy ran the order-tagging migration. Rolling back v4.2.0 now." },
+        { "user": "Priya Nair", "ts": "14:12", "text": "Rollback done, error rate recovering. Release is delayed. Opening a postmortem (NW-1098)." },
+        { "user": "Tom Becker", "ts": "14:20", "text": "Ack. v4.2.0 slips to later this week once we understand the migration issue." }
+      ]
+    },
+    {
+      "id": "SLK-010",
+      "channel": "#payments",
+      "date": "2026-06-10",
+      "kind": "incident_chatter",
+      "messages": [
+        { "user": "Elena Rodriguez", "ts": "15:40", "text": "payments p99 is at 8s. No error spike, just slow. Started this afternoon." },
+        { "user": "Elena Rodriguez", "ts": "15:48", "text": "It's the new fraud-check call from NW-1120. It's synchronous and has no timeout, and fraud-check is slow under peak load." },
+        { "user": "Priya Nair", "ts": "15:52", "text": "Classic hot-path violation — we blocked auth on a non-critical service. Needs a timeout + fallback or go async." },
+        { "user": "Elena Rodriguez", "ts": "16:10", "text": "Opening NW-1130. Will make it async with a 150ms timeout." }
+      ]
+    },
+    {
+      "id": "SLK-020",
+      "channel": "#architecture",
+      "date": "2025-11-05",
+      "kind": "qa_thread",
+      "messages": [
+        { "user": "Marcus Chen", "ts": "10:00", "text": "Are we settled on the orders DB? Someone asked why not DynamoDB." },
+        { "user": "Aisha Khan", "ts": "10:15", "text": "Postgres. We need real multi-item transactions (order + items + payment link) and relational reporting. Writing it up as ADR-007." },
+        { "user": "Elena Rodriguez", "ts": "10:22", "text": "+1, and both teams already run Postgres. DynamoDB's transaction limits don't fit our pattern." }
+      ]
+    },
+    {
+      "id": "SLK-025",
+      "channel": "#releases",
+      "date": "2026-06-12",
+      "kind": "qa_thread",
+      "messages": [
+        { "user": "Sam Okoro", "ts": "09:30", "text": "What's holding up v4.3.0?" },
+        { "user": "Tom Becker", "ts": "09:34", "text": "Just NW-1148 — the flaky checkout-svc integration tests. We won't tag an RC until CI is green. Nothing else is blocking." }
+      ]
+    },
+    {
+      "id": "SLK-030",
+      "channel": "#catalog",
+      "date": "2026-05-18",
+      "kind": "qa_thread",
+      "messages": [
+        { "user": "Priya Nair", "ts": "11:00", "text": "Who do I ping about a stuck inventory sync?" },
+        { "user": "Sam Okoro", "ts": "11:03", "text": "Me — I own inventory-svc. Stuck syncs are almost always consumer lag on the stock-updates Kafka topic." }
+      ]
+    }
+  ]
+}

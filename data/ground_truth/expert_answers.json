@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "type": "ground_truth",
+    "note": "Human expert answers = the reward signal (Assumption 4: human answers are ground truth). gold_evidence is the deterministic key for evidence-coverage scoring. expected_v1_weakness documents what a no-memory AI typically misses — useful for demoing the gap.",
+    "people": ["Priya Nair (SRE)", "Marcus Chen (Checkout)", "Elena Rodriguez (Payments)", "Sam Okoro (Catalog)", "Aisha Khan (Platform)", "Tom Becker (EM)"]
+  },
+  "answers": [
+    {
+      "question_id": "Q-001",
+      "expert": "Priya Nair",
+      "answer": "The v4.2.0 release was delayed because its production deploy on June 3 had to be rolled back. The order-tagging migration (commit a3f9c2, from feature NW-1042) created an index on the orders table using a plain CREATE INDEX instead of CREATE INDEX CONCURRENTLY. On a table that large this took an exclusive lock for ~6 minutes, which blocked all checkout writes and spiked checkout errors to ~40%. This violated our Database Migration Guidelines, which require CONCURRENTLY on large tables like orders. We rolled back, recreated the index concurrently (commit b7e1d4), and re-released as v4.2.1 on June 6.",
+      "root_cause": "A non-concurrent CREATE INDEX migration on the large orders table took an exclusive lock during the deploy, blocking checkout writes — a violation of the migration guidelines.",
+      "gold_evidence": ["NW-1098", "a3f9c2", "WIKI-migrations", "SLK-001", "NW-1042", "b7e1d4"],
+      "reasoning_pattern": [
+        "Start from the symptom: checkout errors / rollback (SLK-001, NW-1098).",
+        "Trace to the triggering code change: which migration/commit ran during the deploy (a3f9c2 via NW-1042).",
+        "Check whether it violated a documented guideline (WIKI-migrations: CONCURRENTLY rule).",
+        "Confirm the fix and the re-release (b7e1d4 -> v4.2.1)."
+      ],
+      "expected_v1_weakness": "A no-memory AI tends to read only the Slack incident thread and report the SYMPTOM ('checkout errors spiked, deploy rolled back') without identifying the non-concurrent migration as the root cause, without citing commit a3f9c2, and without noting the violated migration guideline."
+    },
+    {
+      "question_id": "Q-002",
+      "expert": "Elena Rodriguez",
+      "answer": "On June 10 payments-gateway p99 latency jumped from ~250ms to ~8s with no error spike. The cause was commit c4d8e1 (feature NW-1120), which added a synchronous, un-timed call to the fraud-check service inside the payment authorization hot path. When fraud-check got slow under afternoon peak load, every authorization blocked on it. This violated the Service Call Guidelines, which require hot-path calls to non-critical services to be async or have a <200ms timeout plus a fallback. We fixed it in commit d9a2f7 (NW-1135) by adding a 150ms timeout and a fail-open fallback.",
+      "root_cause": "A new synchronous, un-timed fraud-check call (commit c4d8e1) was added to the payment hot path; when that dependency slowed under load it blocked all authorizations — a violation of the hot-path service-call guideline.",
+      "gold_evidence": ["NW-1130", "c4d8e1", "WIKI-service-calls", "SLK-010", "NW-1120", "d9a2f7"],
+      "reasoning_pattern": [
+        "Start from the symptom: p99 latency spike (SLK-010, NW-1130).",
+        "Trace to the triggering code change: the new fraud-check call (c4d8e1 via NW-1120).",
+        "Check whether it violated a documented guideline (WIKI-service-calls: hot-path rule).",
+        "Confirm the fix (d9a2f7 / NW-1135)."
+      ],
+      "expected_v1_weakness": "Without the lesson from Q-001, a first answer often blames 'fraud-check is slow' (a symptom of the dependency) rather than identifying the real root cause: that a synchronous un-timed call was put on the hot path against the guidelines. This is the SAME reasoning pattern as Q-001, so a system that learned from Q-001 should get Q-002 right on the first try."
+    },
+    {
+      "question_id": "Q-003",
+      "expert": "Sam Okoro",
+      "answer": "inventory-svc is owned by Sam Okoro on the Catalog team. For a stuck inventory sync, contact Sam — stuck syncs are almost always consumer lag on the stock-updates Kafka topic.",
+      "root_cause": "N/A (ownership/contact question).",
+      "gold_evidence": ["WIKI-service-catalog", "SLK-030"],
+      "reasoning_pattern": [
+        "Look up the service in the service catalog for owner + team.",
+        "Corroborate with the historical Slack Q&A about inventory sync."
+      ],
+      "expected_v1_weakness": "Usually answered well even at v1; mainly tests evidence coverage across the catalog and the Slack thread."
+    },
+    {
+      "question_id": "Q-004",
+      "expert": "Aisha Khan",
+      "answer": "We chose Postgres over DynamoDB (ADR-007) for three reasons: (1) we need real multi-item ACID transactions (an order writes an orders row + N order_items + a payments link atomically), and DynamoDB's transaction support was too limited for that pattern; (2) finance/analytics run relational joins natively in Postgres; (3) both teams already operate Postgres. Our peak write volume fits a tuned Postgres primary with read replicas.",
+      "root_cause": "N/A (design-decision question).",
+      "gold_evidence": ["WIKI-adr-orders-db", "SLK-020"],
+      "reasoning_pattern": [
+        "Find the relevant ADR for the decision (ADR-007).",
+        "Summarize the rationale and the rejected alternative.",
+        "Corroborate with the architecture Slack discussion."
+      ],
+      "expected_v1_weakness": "Single-source ADR question; v1 is usually strong. Good control case to show the system doesn't over-trigger learning when it's already correct."
+    },
+    {
+      "question_id": "Q-005",
+      "expert": "Tom Becker",
+      "answer": "v4.3.0 is blocked solely by NW-1148 — flaky integration tests on checkout-svc caused by a race condition in the test harness (order created before the inventory mock is ready). Per the release process, we won't tag a release candidate until CI is green. There are no other open blockers on the v4.3.0 epic (NW-1150).",
+      "root_cause": "Release blocked by a single P1: flaky checkout-svc integration tests (NW-1148), a test-harness race condition.",
+      "gold_evidence": ["NW-1150", "NW-1148", "SLK-025", "WIKI-release-process"],
+      "reasoning_pattern": [
+        "Find the release epic and read its 'blocked_by' field (NW-1150 -> NW-1148).",
+        "Read the blocker to explain WHY (test-harness race).",
+        "Apply the release-process rule (no RC until CI green).",
+        "Corroborate with the #releases Slack thread."
+      ],
+      "expected_v1_weakness": "A no-memory AI may list the blocker ticket id without explaining the underlying cause (test-harness race) or connecting the release-process rule. Benefits from the same 'trace to the underlying cause + check the guideline' pattern."
+    }
+  ]
+}

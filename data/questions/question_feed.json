@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "type": "slack_question_feed",
+    "note": "Simulated Slack feed of incoming organizational questions. The engine ingests these one at a time. Answers are graded against data/ground_truth/expert_answers.json.",
+    "generalization_pair": "Q-001 teaches the 'symptom -> commit -> guideline' pattern; Q-002 is a NEW incident that should benefit from that lesson on its FIRST try (Reflexion Mode B)."
+  },
+  "questions": [
+    {
+      "id": "Q-001",
+      "channel": "#eng-help",
+      "asker": "Tom Becker",
+      "ts": "2026-06-06 09:00",
+      "text": "Why was the v4.2.0 release delayed?",
+      "difficulty": "multi-hop",
+      "is_flagship_demo": true
+    },
+    {
+      "id": "Q-002",
+      "channel": "#eng-help",
+      "asker": "Tom Becker",
+      "ts": "2026-06-12 09:00",
+      "text": "Why did payments-gateway latency spike on June 10, and what was the real cause?",
+      "difficulty": "multi-hop",
+      "tests_generalization_of": "Q-001"
+    },
+    {
+      "id": "Q-003",
+      "channel": "#eng-help",
+      "asker": "Priya Nair",
+      "ts": "2026-06-12 10:00",
+      "text": "Who owns inventory-svc and who should I contact about a stuck inventory sync?",
+      "difficulty": "single-hop"
+    },
+    {
+      "id": "Q-004",
+      "channel": "#architecture",
+      "asker": "New hire",
+      "ts": "2026-06-13 11:00",
+      "text": "Why did we choose Postgres over DynamoDB for the orders database?",
+      "difficulty": "single-source"
+    },
+    {
+      "id": "Q-005",
+      "channel": "#releases",
+      "asker": "Sam Okoro",
+      "ts": "2026-06-13 12:00",
+      "text": "What is currently blocking the v4.3.0 release?",
+      "difficulty": "multi-hop"
+    }
+  ]
+}

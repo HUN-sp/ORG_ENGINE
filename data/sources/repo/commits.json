@@ -1,0 +1,60 @@
+{
+  "_meta": { "type": "code_repo", "note": "Synthetic commit history. Each commit hash IS its source_id.", "repo": "northwind/platform" },
+  "commits": [
+    {
+      "hash": "a3f9c2",
+      "author": "Marcus Chen",
+      "date": "2026-06-02",
+      "service": "checkout-svc",
+      "ticket": "NW-1042",
+      "message": "feat(orders): add order_tags table and index for tagging",
+      "files": ["db/migrations/0042_order_tags.sql"],
+      "diff_summary": "Adds order_tags table. Adds index: `CREATE INDEX idx_orders_tag_id ON orders(tag_id);`  (NOTE: plain CREATE INDEX, not CONCURRENTLY).",
+      "released_in": "v4.2.0 (rolled back)"
+    },
+    {
+      "hash": "b7e1d4",
+      "author": "Marcus Chen",
+      "date": "2026-06-05",
+      "service": "checkout-svc",
+      "ticket": "NW-1098",
+      "message": "fix(orders): recreate tag index concurrently",
+      "files": ["db/migrations/0043_order_tags_concurrent.sql"],
+      "diff_summary": "Drops idx_orders_tag_id and recreates it with `CREATE INDEX CONCURRENTLY idx_orders_tag_id ON orders(tag_id);` per migration guidelines. No table lock.",
+      "released_in": "v4.2.1"
+    },
+    {
+      "hash": "c4d8e1",
+      "author": "Elena Rodriguez",
+      "date": "2026-06-09",
+      "service": "payments-gateway",
+      "ticket": "NW-1120",
+      "message": "feat(payments): call fraud-check before authorizing payment",
+      "files": ["src/main/java/payments/AuthorizeService.java"],
+      "diff_summary": "In authorize(): adds `fraudClient.score(order)` — a SYNCHRONOUS blocking call with no timeout and no fallback — before authorizing the payment.",
+      "released_in": "v4.2.x"
+    },
+    {
+      "hash": "d9a2f7",
+      "author": "Elena Rodriguez",
+      "date": "2026-06-11",
+      "service": "payments-gateway",
+      "ticket": "NW-1135",
+      "message": "fix(payments): make fraud-check async with 150ms timeout + fallback",
+      "files": ["src/main/java/payments/AuthorizeService.java"],
+      "diff_summary": "Wraps fraudClient.score in a 150ms timeout; on timeout, fail open and queue an async review. Removes fraud-check from the blocking auth path.",
+      "released_in": "v4.2.2"
+    },
+    {
+      "hash": "e1c3b8",
+      "author": "Sam Okoro",
+      "date": "2026-05-28",
+      "service": "inventory-svc",
+      "ticket": "NW-1030",
+      "message": "feat(inventory): batch stock-updates consumer",
+      "files": ["inventory/consumer.py"],
+      "diff_summary": "Batches stock-updates Kafka messages for throughput. Unrelated to the June incidents.",
+      "released_in": "v4.1.5"
+    }
+  ]
+}

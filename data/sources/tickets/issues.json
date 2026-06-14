@@ -1,0 +1,134 @@
+{
+  "_meta": { "type": "issue_tracker", "source_id_prefix": "NW", "note": "Synthetic issue tracker. Each ticket's id IS its source_id." },
+  "tickets": [
+    {
+      "id": "NW-1042",
+      "type": "feature",
+      "title": "Add order tagging feature",
+      "status": "Done",
+      "owner": "Marcus Chen",
+      "team": "Checkout",
+      "created": "2026-05-25",
+      "closed": "2026-06-03",
+      "labels": ["checkout", "database", "v4.2.0"],
+      "description": "Let merchants tag orders (e.g. 'gift', 'priority'). Requires a new order_tags table and an index on orders(tag_id) for filtering. Targeted for the v4.2.0 release.",
+      "linked_commits": ["a3f9c2"],
+      "comments": [
+        { "author": "Marcus Chen", "date": "2026-05-30", "text": "Schema done. Adding an index on orders(tag_id) so the tag filter query is fast." },
+        { "author": "Sam Okoro", "date": "2026-05-31", "text": "Heads up, orders is a huge table. Did you check the migration guidelines?" },
+        { "author": "Marcus Chen", "date": "2026-05-31", "text": "It's a quick index, should be fine. Merging for v4.2.0." }
+      ]
+    },
+    {
+      "id": "NW-1098",
+      "type": "incident",
+      "title": "INCIDENT: v4.2.0 checkout outage + release delay",
+      "status": "Done",
+      "owner": "Priya Nair",
+      "team": "SRE",
+      "severity": "P1",
+      "created": "2026-06-03",
+      "closed": "2026-06-06",
+      "labels": ["incident", "checkout", "database", "postmortem", "v4.2.0"],
+      "description": "During the v4.2.0 production deploy on 2026-06-03, checkout error rate spiked to ~40% and the deploy was rolled back. Release slipped from June 3 to June 6.",
+      "root_cause": "The v4.2.0 deploy ran a migration (commit a3f9c2, from NW-1042) that created an index on the orders table with a plain CREATE INDEX (non-concurrent). This took an exclusive lock on the orders table for ~6 minutes, blocking all checkout writes. This violated the Database Migration Guidelines, which require CREATE INDEX CONCURRENTLY on large tables.",
+      "linked_commits": ["a3f9c2", "b7e1d4"],
+      "action_items": [
+        "Recreate the index with CREATE INDEX CONCURRENTLY (commit b7e1d4).",
+        "Add a CI lint check that fails any plain CREATE INDEX on tables in the large-table list.",
+        "Re-release as v4.2.1."
+      ],
+      "comments": [
+        { "author": "Priya Nair", "date": "2026-06-03", "text": "Rolled back v4.2.0. orders table was locked during the deploy migration. Checkout writes were blocked." },
+        { "author": "Aisha Khan", "date": "2026-06-04", "text": "Confirmed: the tag index migration used plain CREATE INDEX. Our guidelines require CONCURRENTLY on orders. This is the root cause." },
+        { "author": "Marcus Chen", "date": "2026-06-05", "text": "Fixed in b7e1d4 with CONCURRENTLY. Sorry — I underestimated the lock on a table that size." }
+      ]
+    },
+    {
+      "id": "NW-1120",
+      "type": "feature",
+      "title": "Enhanced fraud detection on payments",
+      "status": "Done",
+      "owner": "Elena Rodriguez",
+      "team": "Payments",
+      "created": "2026-06-05",
+      "closed": "2026-06-09",
+      "labels": ["payments", "fraud", "v4.2.x"],
+      "description": "Call the fraud-check service before authorizing a payment to score risk. Improves fraud catch rate.",
+      "linked_commits": ["c4d8e1"],
+      "comments": [
+        { "author": "Elena Rodriguez", "date": "2026-06-08", "text": "Wiring the fraud-check call into the authorize() path. Shipping with v4.2.x." }
+      ]
+    },
+    {
+      "id": "NW-1130",
+      "type": "incident",
+      "title": "INCIDENT: payments-gateway p99 latency spike",
+      "status": "Done",
+      "owner": "Elena Rodriguez",
+      "team": "Payments",
+      "severity": "P2",
+      "created": "2026-06-10",
+      "closed": "2026-06-12",
+      "labels": ["incident", "payments", "latency", "postmortem"],
+      "description": "On 2026-06-10 payments-gateway p99 latency spiked from ~250ms to ~8s. Checkout conversions dropped. No errors, just slowness.",
+      "root_cause": "Commit c4d8e1 (from NW-1120) added a SYNCHRONOUS, un-timed call to the fraud-check service inside the payment authorization hot path. fraud-check became slow under afternoon peak load, and because the call had no timeout and no fallback, every payment authorization blocked on it. This violated the Service Call Guidelines (hot-path calls must be async or have a <200ms timeout + fallback).",
+      "linked_commits": ["c4d8e1", "d9a2f7"],
+      "action_items": [
+        "Make the fraud-check call async with a 150ms timeout and a fail-open fallback (commit d9a2f7).",
+        "Ship as part of NW-1135."
+      ],
+      "comments": [
+        { "author": "Elena Rodriguez", "date": "2026-06-10", "text": "p99 8s on payments. Traced it to the new fraud-check call — it's synchronous and has no timeout." },
+        { "author": "Priya Nair", "date": "2026-06-10", "text": "fraud-check is slow under load. We blocked the whole auth path on a non-critical service. That's exactly what the hot-path guideline warns against." }
+      ]
+    },
+    {
+      "id": "NW-1135",
+      "type": "fix",
+      "title": "Make fraud-check call async (timeout + fallback)",
+      "status": "Done",
+      "owner": "Elena Rodriguez",
+      "team": "Payments",
+      "created": "2026-06-11",
+      "closed": "2026-06-12",
+      "labels": ["payments", "latency", "fix"],
+      "description": "Move the fraud-check call off the hot path: 150ms timeout, fail-open fallback, async risk review. Resolves NW-1130.",
+      "linked_commits": ["d9a2f7"],
+      "comments": []
+    },
+    {
+      "id": "NW-1148",
+      "type": "bug",
+      "title": "Flaky integration tests on checkout-svc",
+      "status": "In Progress",
+      "owner": "Marcus Chen",
+      "team": "Checkout",
+      "severity": "P1",
+      "created": "2026-06-09",
+      "closed": null,
+      "labels": ["checkout", "tests", "ci", "blocker"],
+      "description": "checkout-svc integration tests fail ~1 in 4 runs due to a race condition in the test harness (order created before inventory mock is ready). Blocks tagging a clean release candidate.",
+      "linked_commits": [],
+      "comments": [
+        { "author": "Marcus Chen", "date": "2026-06-11", "text": "It's a test-harness race, not a product bug. Adding a readiness wait. ETA a couple days." }
+      ]
+    },
+    {
+      "id": "NW-1150",
+      "type": "epic",
+      "title": "Release v4.3.0",
+      "status": "Blocked",
+      "owner": "Tom Becker",
+      "team": "Eng",
+      "created": "2026-06-08",
+      "closed": null,
+      "labels": ["release", "v4.3.0", "epic"],
+      "description": "Coordinating ticket for the v4.3.0 release, targeted 2026-06-17.",
+      "blocked_by": ["NW-1148"],
+      "comments": [
+        { "author": "Tom Becker", "date": "2026-06-12", "text": "v4.3.0 is blocked on NW-1148 (flaky checkout integration tests). We will not tag an RC until CI is green. No other open blockers." }
+      ]
+    }
+  ]
+}
