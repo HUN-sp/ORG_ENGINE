@@ -19,7 +19,7 @@ import json
 import sys
 import time
 
-from engine import config, actor, evaluator, reflector
+from engine import config, pipeline
 from engine.retriever import Retriever
 from engine.memory import Memory
 
@@ -49,57 +49,28 @@ def run_one(q, expert, retriever, memory):
     banner(f'{q["id"]}  ·  {question}')
     t0 = time.time()
 
-    # 1. recall (retrieval is lesson-aware: lessons from EARLIER questions already
-    #    sharpen this search -> Reflexion Mode B / generalization)
-    lessons_v1 = memory.retrieve(question)
-    evidence_v1 = retriever.retrieve(question, lessons=lessons_v1)
-    print(f'Lessons available before answering (Mode B): {[l["id"] for l in lessons_v1]}')
-    print(f'Retrieved evidence (v1): {[d.id for d in evidence_v1]}')
+    r = pipeline.process_question(question, expert, retriever, memory)
+    v1, v2 = r["v1"], r["v2"]
 
-    # 2. Version 1
-    v1 = actor.answer(question, evidence_v1, lessons_v1)
-    s1 = evaluator.score(v1, expert)
+    print(f'Lessons available before answering (Mode B): {r["lessons_available_at_v1"]}')
+    print(f'Retrieved evidence (v1): {[e["id"] for e in r["evidence_v1"]]}')
     print(f'\n-- ANSWER v1 (confidence {v1["confidence"]}) --\n{v1["answer"]}')
-    print(f'v1 scores: {s1}')
-
-    # 3. human-in-the-loop + gap analysis + lesson
-    print(f'\n-- HUMAN EXPERT ANSWER ({expert["expert"]}) --\n{expert["answer"]}')
-    gap = reflector.gap_analysis(question, v1, expert)
-    print(f'\nGap analysis: missed evidence {gap["missing_evidence"]}; '
-          f'root_cause_found={gap["root_cause_found"]}')
-    lesson = reflector.make_lesson(question, v1, expert, gap)
-    lesson = memory.add(lesson)
-    print(f'Learned lesson {lesson["id"]}: {lesson["reasoning_rule"]}')
-
-    # 4. Version 2 (re-run WITH the new lesson — note retrieval is now lesson-aware,
-    #    so v2 can surface evidence the bare question could not reach)
-    lessons_v2 = memory.retrieve(question)
-    evidence_v2 = retriever.retrieve(question, lessons=lessons_v2)
-    print(f'Retrieved evidence (v2): {[d.id for d in evidence_v2]}')
-    v2 = actor.answer(question, evidence_v2, lessons_v2)
-    s2 = evaluator.score(v2, expert)
+    print(f'v1 scores: {v1["scores"]}')
+    print(f'\n-- HUMAN EXPERT ANSWER ({r["human"]["expert"]}) --\n{r["human"]["answer"]}')
+    print(f'\nGap analysis: missed evidence {r["gap"]["missing_evidence"]}; '
+          f'root_cause_found={r["gap"]["root_cause_found"]}')
+    print(f'Learned lesson {r["lesson"]["id"]}: {r["lesson"]["reasoning_rule"]}')
+    print(f'Retrieved evidence (v2): {[e["id"] for e in r["evidence_v2"]]}')
     print(f'\n-- ANSWER v2 (confidence {v2["confidence"]}) --\n{v2["answer"]}')
-    print(f'v2 scores: {s2}')
-
-    gain = round(s2["overall"] - s1["overall"], 1)
-    memory.record_use([lesson["id"]], won=gain > 0)
-    print(f'\n>>> LEARNING GAIN: {s1["overall"]} -> {s2["overall"]}  (Δ {gain:+})')
+    print(f'v2 scores: {v2["scores"]}')
+    print(f'\n>>> LEARNING GAIN: {v1["scores"]["overall"]} -> {v2["scores"]["overall"]}  (Δ {r["gain"]:+})')
 
     return {
         "question_id": q["id"],
-        "question": question,
         "difficulty": q.get("difficulty", ""),
         "tests_generalization_of": q.get("tests_generalization_of"),
-        "lessons_available_at_v1": [l["id"] for l in lessons_v1],
-        "evidence_retrieved_v1": [d.id for d in evidence_v1],
-        "evidence_retrieved_v2": [d.id for d in evidence_v2],
-        "gold_evidence": expert.get("gold_evidence", []),
-        "v1": {**v1, "scores": s1},
-        "v2": {**v2, "scores": s2},
-        "gap_analysis": gap,
-        "lesson_id": lesson["id"],
-        "gain": gain,
         "seconds": round(time.time() - t0, 1),
+        **r,
     }
 
 

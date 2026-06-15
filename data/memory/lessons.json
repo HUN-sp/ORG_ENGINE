@@ -20,5 +20,29 @@
       "wins": 0
     }
   },
-  "lessons": []
+  "lessons": [
+    {
+      "trigger_pattern": "why did X fail / get delayed / slow down",
+      "tags": [
+        "migration",
+        "deploy",
+        "commit",
+        "guideline",
+        "concurrently",
+        "index",
+        "latency",
+        "release",
+        "incident",
+        "blocked"
+      ],
+      "what_ai_missed": "MOCK: stopped at the symptom",
+      "reasoning_rule": "Trace symptom -> the triggering commit/migration near the incident -> whether it violated a documented wiki guideline -> the fix.",
+      "evidence_rule": "Cross-reference incident ticket + slack thread + triggering commit + the relevant wiki guideline (migration / service-call).",
+      "confidence_adjustment": "If no triggering commit is found, lower confidence and say so.",
+      "created_from_question": "checkout-svc pods keep getting OOMKilled since yesterday's deploy. What is the root cause?",
+      "id": "LSN-001",
+      "uses": 1,
+      "wins": 1
+    }
+  ]
 }
