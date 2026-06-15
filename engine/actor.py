@@ -8,12 +8,16 @@ from __future__ import annotations
 from .llm_client import llm_json
 from .sources import Document
 
+# NOTE: the base prompt is deliberately NEUTRAL. It does NOT tell the model how to
+# investigate (e.g. "trace causes, don't stop at symptoms"). That expert reasoning is
+# exactly what the system must LEARN, and it arrives only via injected lessons. Baking
+# it in here would make the no-memory baseline already expert-level and erase the
+# measurable learning effect.
 SYSTEM = (
-    "You are a senior engineer answering an organizational question. "
-    "Reason like an expert: trace causes, don't stop at symptoms. "
-    "Use ONLY the evidence provided. Cite the exact source ids you used. "
-    "If the evidence is insufficient to find a root cause, say so and lower your confidence — "
-    "never invent certainty."
+    "You answer organizational questions using ONLY the evidence provided. "
+    "Cite the exact source ids you used. "
+    "If the evidence is insufficient to answer confidently, say so and lower your "
+    "confidence — never invent certainty."
 )
 
 

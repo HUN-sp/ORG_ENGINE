@@ -18,6 +18,20 @@ def _tokens(text: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9\-]+", text.lower()) if w not in _STOP and len(w) > 2}
 
 
+# Words that signal a causal / incident "why did X go wrong?" question. A lesson learned
+# on one incident type (e.g. a migration) must generalize to another (e.g. an OOM) — the
+# reasoning pattern is shared even when the surface vocabulary isn't. Matching on this
+# family is what makes generalization actually fire.
+_CAUSAL = {"why", "cause", "caused", "root", "fail", "failed", "failure", "broke", "broken",
+           "crash", "crashed", "oom", "oomkilled", "latency", "slow", "slowed", "spike",
+           "spiked", "delayed", "delay", "error", "errors", "down", "blocked", "stuck",
+           "leak", "outage", "incident", "regression", "degraded"}
+
+
+def _is_causal(text: str) -> bool:
+    return bool(_tokens(text) & _CAUSAL)
+
+
 class Memory:
     def __init__(self, path=None):
         self.path = path or config.LESSONS_FILE
@@ -29,7 +43,13 @@ class Memory:
     def _relevance(self, question: str, lesson: dict) -> int:
         q = _tokens(question)
         keys = _tokens(lesson.get("trigger_pattern", "")) | {t.lower() for t in lesson.get("tags", [])}
-        return len(q & keys)
+        score = len(q & keys)
+        # cross-incident generalization: a causal question matches a causal lesson even
+        # when the specific vocabulary differs (migration vs OOM vs latency).
+        trigger_text = lesson.get("trigger_pattern", "") + " " + " ".join(lesson.get("tags", []))
+        if _is_causal(question) and _is_causal(trigger_text):
+            score += 2
+        return score
 
     def retrieve(self, question: str, k: int | None = None) -> list[dict]:
         k = k or config.TOP_K_LESSONS
