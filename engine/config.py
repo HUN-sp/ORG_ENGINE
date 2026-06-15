@@ -31,12 +31,16 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
 # Judge model — used ONLY for the similarity / root-cause judgement.
 # Default: reuse the primary. You can point this at a stronger free-tier model
 # (e.g. Groq 70B) even if a smaller model does the answering.
 JUDGE_PROVIDER = os.getenv("JUDGE_PROVIDER", LLM_PROVIDER).lower()
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", "")  # "" -> use the provider's default model
-# mock means fully offline: don't let a .env JUDGE_PROVIDER=groq leak real API calls.
+# mock means fully offline: don't let a .env JUDGE_PROVIDER leak real API calls.
 if LLM_PROVIDER == "mock":
     JUDGE_PROVIDER = "mock"
 

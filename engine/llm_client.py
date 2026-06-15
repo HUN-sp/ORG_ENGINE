@@ -49,6 +49,30 @@ def _groq(messages, model, json_mode):
     return r.json()["choices"][0]["message"]["content"]
 
 
+def _openrouter(messages, model, json_mode):
+    if not config.OPENROUTER_API_KEY:
+        raise LLMError(
+            "OPENROUTER_API_KEY is not set. Put it in your .env, or switch "
+            "LLM_PROVIDER to groq/ollama/mock."
+        )
+    # No response_format: many free OpenRouter models reject it. We rely on the
+    # 'Return a JSON object' instruction in the prompt + the robust _extract_json.
+    payload = {"model": model, "messages": messages, "temperature": 0.2}
+    headers = {
+        "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
+        "HTTP-Referer": "https://localhost",
+        "X-Title": "Org Reasoning Engine",
+    }
+    r = requests.post(config.OPENROUTER_URL, json=payload, headers=headers,
+                      timeout=config.REQUEST_TIMEOUT)
+    if r.status_code == 429:
+        ra = r.headers.get("retry-after")
+        raise RateLimit(float(ra) if ra else (_parse_wait(r.text) or 5.0))
+    if r.status_code != 200:
+        raise LLMError(f"OpenRouter {r.status_code}: {r.text[:300]}")
+    return r.json()["choices"][0]["message"]["content"]
+
+
 def _ollama(messages, model, json_mode):
     payload = {"model": model, "messages": messages, "stream": False,
                "options": {"temperature": 0.2}}
@@ -74,25 +98,27 @@ def _call(prompt, *, system=None, json_mode=False, judge=False, retries=6):
     if provider == "mock":
         return _mock(prompt)
 
-    if provider == "groq":
-        model = config.JUDGE_MODEL or config.GROQ_MODEL if judge else config.GROQ_MODEL
-    else:
-        model = config.JUDGE_MODEL or config.OLLAMA_MODEL if judge else config.OLLAMA_MODEL
+    backends = {"groq": (_groq, config.GROQ_MODEL),
+                "ollama": (_ollama, config.OLLAMA_MODEL),
+                "openrouter": (_openrouter, config.OPENROUTER_MODEL)}
+    if provider not in backends:
+        raise LLMError(f"Unknown LLM provider '{provider}'. Use groq/ollama/openrouter/mock.")
+    fn, default_model = backends[provider]
+    model = (config.JUDGE_MODEL or default_model) if judge else default_model
 
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    fn = _groq if provider == "groq" else _ollama
     last = None
     for attempt in range(retries):
         try:
             return fn(messages, model, json_mode)
         except RateLimit as e:
             last = e
-            # honour the provider's suggested wait (free tier is ~12k tokens/min)
-            time.sleep(min(e.wait + 1.0, 30))
+            # wait, but cap it so the UI stays responsive (free RPM windows reset ~60s)
+            time.sleep(min(e.wait + 1.0, 12))
         except LLMError as e:
             last = e
             time.sleep(1.5 * (attempt + 1))
