@@ -15,6 +15,7 @@ This is the ablation: turn memory off -> the curve goes flat.
     LLM_PROVIDER=mock python experiment.py   # offline smoke test
 """
 from __future__ import annotations
+import argparse
 import json
 import sys
 
@@ -90,7 +91,18 @@ def run_warm(questions, gt, retriever, memory):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--questions", help="comma-separated subset, e.g. Q-001,Q-006,Q-007 "
+                                        "(fewer API calls — good for free-tier budgets)")
+    args = ap.parse_args()
+
     questions = load_questions()
+    if args.questions:
+        wanted = [x.strip() for x in args.questions.split(",")]
+        questions = [q for q in questions if q["id"] in wanted]
+        # preserve the requested order so earlier questions teach later ones
+        questions.sort(key=lambda q: wanted.index(q["id"]))
+        print(f"Subset: {[q['id'] for q in questions]}")
     gt = load_ground_truth()
     retriever = Retriever()
     memory = Memory()
