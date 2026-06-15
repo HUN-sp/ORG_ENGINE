@@ -51,9 +51,14 @@ def run_cold(questions, gt, retriever):
     for q in questions:
         if q["id"] not in gt:
             continue
-        _, s, ev = answer_once(q["text"], gt[q["id"]], retriever, lessons=[])
+        try:
+            _, s, ev = answer_once(q["text"], gt[q["id"]], retriever, lessons=[])
+        except Exception as e:
+            print(f"  ! skip {q['id']} (cold): {str(e)[:80]}")
+            continue
         out.append({"id": q["id"], "overall": s["overall"], "scores": s, "evidence": ev,
                     "lessons_used": []})
+        print(f"  {q['id']} cold = {s['overall']}")
     return out
 
 
@@ -66,13 +71,21 @@ def run_warm(questions, gt, retriever, memory):
             continue
         expert = gt[q["id"]]
         lessons = memory.retrieve(q["text"])                      # from PRIOR questions only
-        ans, s, ev = answer_once(q["text"], expert, retriever, lessons)
+        try:
+            ans, s, ev = answer_once(q["text"], expert, retriever, lessons)
+        except Exception as e:
+            print(f"  ! skip {q['id']} (warm): {str(e)[:80]}")
+            continue
         out.append({"id": q["id"], "overall": s["overall"], "scores": s, "evidence": ev,
                     "lessons_used": [l["id"] for l in lessons]})
+        print(f"  {q['id']} warm = {s['overall']}  (lessons: {[l['id'] for l in lessons]})")
         # human-in-the-loop correction -> store a lesson for FUTURE questions
-        gap = reflector.gap_analysis(q["text"], ans, expert)
-        lesson = reflector.make_lesson(q["text"], ans, expert, gap)
-        memory.add(lesson)
+        try:
+            gap = reflector.gap_analysis(q["text"], ans, expert)
+            lesson = reflector.make_lesson(q["text"], ans, expert, gap)
+            memory.add(lesson)
+        except Exception as e:
+            print(f"  ! {q['id']} learned no lesson: {str(e)[:80]}")
     return out
 
 
@@ -91,7 +104,7 @@ def main():
     warm_by = {r["id"]: r for r in warm}
     rows = []
     for q in questions:
-        if q["id"] not in cold_by:
+        if q["id"] not in cold_by or q["id"] not in warm_by:
             continue
         c, w = cold_by[q["id"]], warm_by[q["id"]]
         rows.append({

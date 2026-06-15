@@ -28,6 +28,20 @@ def _parse_wait(text: str) -> float:
     return float(m.group(1)) if m else 0.0
 
 
+_last_call = [0.0]  # wall-clock of the last real call, for throttling
+
+
+def _throttle():
+    """Sleep so consecutive real calls are at least MIN_CALL_INTERVAL apart."""
+    interval = config.MIN_CALL_INTERVAL
+    if interval <= 0:
+        return
+    dt = time.time() - _last_call[0]
+    if dt < interval:
+        time.sleep(interval - dt)
+    _last_call[0] = time.time()
+
+
 def _groq(messages, model, json_mode):
     if not config.GROQ_API_KEY:
         raise LLMError(
@@ -113,12 +127,18 @@ def _call(prompt, *, system=None, json_mode=False, judge=False, retries=6):
 
     last = None
     for attempt in range(retries):
+        _throttle()  # stay under free-tier requests-per-minute
         try:
             return fn(messages, model, json_mode)
         except RateLimit as e:
             last = e
-            # wait, but cap it so the UI stays responsive (free RPM windows reset ~60s)
-            time.sleep(min(e.wait + 1.0, 12))
+            if e.wait > 90:
+                # a very long wait means a daily/quota cap, not a transient blip.
+                raise LLMError(
+                    f"{provider} is rate-limited for ~{int(e.wait)}s (likely a daily/quota "
+                    f"cap). Switch LLM_PROVIDER in .env (openrouter/groq), use mock, or wait."
+                )
+            time.sleep(min(e.wait + 1.0, 20))
         except LLMError as e:
             last = e
             time.sleep(1.5 * (attempt + 1))

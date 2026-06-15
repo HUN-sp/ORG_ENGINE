@@ -48,3 +48,6 @@ if LLM_PROVIDER == "mock":
 TOP_K_EVIDENCE = int(os.getenv("TOP_K_EVIDENCE", "6"))   # docs retrieved per question
 TOP_K_LESSONS = int(os.getenv("TOP_K_LESSONS", "3"))     # lessons injected (Reflexion bound)
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "60"))
+# Minimum seconds between real LLM calls — throttles us under free-tier
+# requests-per-minute limits (OpenRouter free ~20/min). 0 disables.
+MIN_CALL_INTERVAL = float(os.getenv("LLM_MIN_INTERVAL", "4"))
