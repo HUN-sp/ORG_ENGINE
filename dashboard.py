@@ -8,10 +8,31 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-RUN_LOG = Path(__file__).parent / "data" / "run_log.json"
+DATA = Path(__file__).parent / "data"
+RUN_LOG = DATA / "run_log.json"
+EXPERIMENT_LOG = DATA / "experiment_log.json"
 
 st.set_page_config(page_title="Org Reasoning Engine — Learning Dashboard", layout="wide")
 st.title("🧠 Organizational Reasoning Engine — Learning Dashboard")
+
+# ---- The headline result: COLD (memory off) vs WARM (memory on) ablation ----
+if EXPERIMENT_LOG.exists():
+    exp = json.loads(EXPERIMENT_LOG.read_text(encoding="utf-8"))
+    edf = pd.DataFrame([{"question": r["id"], "COLD (no memory)": r["cold_overall"],
+                         "WARM (learning)": r["warm_overall"], "lift": r["lift"]} for r in exp])
+    st.header("📈 Does it actually learn? Cold vs Warm ablation")
+    st.caption("COLD = memory permanently off (plain RAG baseline). WARM = each question's first "
+               "attempt uses lessons learned on earlier questions. The gap = the value of learning.")
+    cold_avg = edf["COLD (no memory)"].mean()
+    warm_avg = edf["WARM (learning)"].mean()
+    pct = (warm_avg - cold_avg) / cold_avg * 100 if cold_avg else 0
+    a, b, c = st.columns(3)
+    a.metric("Avg COLD (baseline)", f"{cold_avg:.0f}")
+    b.metric("Avg WARM (learned)", f"{warm_avg:.0f}", f"{warm_avg - cold_avg:+.0f}")
+    c.metric("Learning lift", f"{pct:+.0f}%", help="target ≥ +20%")
+    st.line_chart(edf.set_index("question")[["COLD (no memory)", "WARM (learning)"]])
+    st.dataframe(edf, use_container_width=True)
+    st.divider()
 
 if not RUN_LOG.exists():
     st.warning("No run log yet. Run `python run.py` first.")

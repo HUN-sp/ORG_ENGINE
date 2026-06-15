@@ -71,6 +71,34 @@
         "Corroborate with the #releases Slack thread."
       ],
       "expected_v1_weakness": "A no-memory AI may list the blocker ticket id without explaining the underlying cause (test-harness race) or connecting the release-process rule. Benefits from the same 'trace to the underlying cause + check the guideline' pattern."
+    },
+    {
+      "question_id": "Q-006",
+      "expert": "Priya Nair",
+      "answer": "The checkout-svc OOMKills are caused by commit f2a8c9 (feature NW-1160), shipped in yesterday's v4.2.2 deploy, which added an in-memory product-lookup cache that is unbounded: it has no size limit, no TTL, and no eviction, so it only ever grows. Memory climbs until the pod hits its limit and is OOMKilled, then the cycle repeats. This violates our Resource & Caching Guidelines, which require every in-memory cache to be bounded (max size and/or TTL with LRU eviction). The fix is to cap the cache (bounded LRU + TTL).",
+      "root_cause": "An unbounded in-memory product cache added in commit f2a8c9 (no size limit/TTL/eviction) grows until the pod is OOMKilled — a violation of the Resource & Caching Guidelines.",
+      "gold_evidence": ["f2a8c9", "SLK-040", "WIKI-resource-guidelines", "NW-1160"],
+      "reasoning_pattern": [
+        "Start from the symptom: pods OOMKilled, memory climbs steadily (SLK-040).",
+        "Correlate with the most recent deploy (v4.2.2) and find what it changed in checkout-svc (commit f2a8c9 via NW-1160).",
+        "Inspect the change: an unbounded map used as a cache.",
+        "Check it against the documented guideline (WIKI-resource-guidelines: caches must be bounded)."
+      ],
+      "expected_v1_weakness": "There is NO postmortem for this incident yet. A no-memory/plain-RAG system retrieves the symptom thread (SLK-040) and reports 'pods are OOMKilled / memory leak' without identifying the unbounded cache in commit f2a8c9 or citing the caching guideline — because no document states the cause. A system that learned the 'trace symptom -> recent commit -> violated guideline' pattern from Q-001 investigates and names the real cause."
+    },
+    {
+      "question_id": "Q-007",
+      "expert": "Aisha Khan",
+      "answer": "The login latency spike is caused by commit a7b3e2 (feature NW-1162), shipped in v4.2.2, which added a synchronous, awaited audit-log database write inline on the login request path. Every login now blocks on that DB write before responding, adding ~3s under load. This violates the Service Call Guidelines: work that is not critical to the response (audit logging) must not block a hot path — it should be asynchronous or queued. The fix is to write the audit log asynchronously (fire-and-forget or a queue).",
+      "root_cause": "A synchronous audit-log DB write added to the login hot path in commit a7b3e2 blocks every login response — a violation of the hot-path Service Call Guidelines.",
+      "gold_evidence": ["a7b3e2", "SLK-041", "WIKI-service-calls", "NW-1162"],
+      "reasoning_pattern": [
+        "Start from the symptom: login p95 latency jumped, no error change (SLK-041).",
+        "Correlate with the most recent deploy (v4.2.2) and find what it changed in auth-service (commit a7b3e2 via NW-1162).",
+        "Inspect the change: a synchronous, awaited DB write on the login path.",
+        "Check it against the documented guideline (WIKI-service-calls: hot-path work must be async)."
+      ],
+      "expected_v1_weakness": "No postmortem exists. A plain-RAG system reports 'logins are slow' from SLK-041 and stops. The learned system reuses the Q-002 pattern (sync work on a hot path violates the service-call guideline) and identifies commit a7b3e2 as the cause."
     }
   ]
 }

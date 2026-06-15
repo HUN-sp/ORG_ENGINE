@@ -129,6 +129,38 @@
       "comments": [
         { "author": "Tom Becker", "date": "2026-06-12", "text": "v4.3.0 is blocked on NW-1148 (flaky checkout integration tests). We will not tag an RC until CI is green. No other open blockers." }
       ]
+    },
+    {
+      "id": "NW-1160",
+      "type": "feature",
+      "title": "Cache product lookups in checkout-svc",
+      "status": "Done",
+      "owner": "Marcus Chen",
+      "team": "Checkout",
+      "created": "2026-06-11",
+      "closed": "2026-06-13",
+      "labels": ["checkout", "performance", "v4.2.2"],
+      "description": "Product lookups hit the catalog DB on every checkout. Add an in-memory cache to cut latency. Shipped in v4.2.2 on June 13.",
+      "linked_commits": ["f2a8c9"],
+      "comments": [
+        { "author": "Marcus Chen", "date": "2026-06-12", "text": "Simple in-memory map keyed by product id. Big latency win in staging." }
+      ]
+    },
+    {
+      "id": "NW-1162",
+      "type": "feature",
+      "title": "Audit logging for logins",
+      "status": "Done",
+      "owner": "Aisha Khan",
+      "team": "Platform",
+      "created": "2026-06-11",
+      "closed": "2026-06-13",
+      "labels": ["auth", "compliance", "v4.2.2"],
+      "description": "Compliance needs an audit-log entry for every login. Write a row to the audit_log table on each successful login. Shipped in v4.2.2 on June 13.",
+      "linked_commits": ["a7b3e2"],
+      "comments": [
+        { "author": "Aisha Khan", "date": "2026-06-12", "text": "Writing the audit row inline in the login handler so it's guaranteed durable before we respond." }
+      ]
     }
   ]
 }

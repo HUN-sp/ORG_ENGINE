@@ -56,6 +56,26 @@
         { "user": "Priya Nair", "ts": "11:00", "text": "Who do I ping about a stuck inventory sync?" },
         { "user": "Sam Okoro", "ts": "11:03", "text": "Me — I own inventory-svc. Stuck syncs are almost always consumer lag on the stock-updates Kafka topic." }
       ]
+    },
+    {
+      "id": "SLK-040",
+      "channel": "#incidents",
+      "date": "2026-06-14",
+      "kind": "incident_chatter",
+      "messages": [
+        { "user": "Priya Nair", "ts": "08:15", "text": "checkout-svc pods have been getting OOMKilled every ~30 min since yesterday. Memory climbs steadily from start until the pod dies, then restarts and climbs again." },
+        { "user": "Priya Nair", "ts": "08:18", "text": "Started after yesterday's v4.2.2 rollout. No traffic spike. Anyone know what changed in that deploy?" }
+      ]
+    },
+    {
+      "id": "SLK-041",
+      "channel": "#incidents",
+      "date": "2026-06-14",
+      "kind": "incident_chatter",
+      "messages": [
+        { "user": "Aisha Khan", "ts": "09:40", "text": "login p95 latency jumped to ~3s starting yesterday. It was ~120ms before. No error rate change, logins still succeed, just slow." },
+        { "user": "Priya Nair", "ts": "09:44", "text": "Also lines up with the v4.2.2 deploy. What landed in auth-service?" }
+      ]
     }
   ]
 }

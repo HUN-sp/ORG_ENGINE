@@ -46,6 +46,26 @@
       "ts": "2026-06-13 12:00",
       "text": "What is currently blocking the v4.3.0 release?",
       "difficulty": "multi-hop"
+    },
+    {
+      "id": "Q-006",
+      "channel": "#incidents",
+      "asker": "Priya Nair",
+      "ts": "2026-06-14 08:30",
+      "text": "checkout-svc pods keep getting OOMKilled since yesterday's deploy. What is the root cause?",
+      "difficulty": "fresh-incident",
+      "note": "FRESH incident — NO postmortem exists yet. Cause must be investigated from the recent commit + the caching guideline. Same family as Q-001 (symptom -> commit -> guideline).",
+      "tests_generalization_of": "Q-001"
+    },
+    {
+      "id": "Q-007",
+      "channel": "#incidents",
+      "asker": "Aisha Khan",
+      "ts": "2026-06-14 09:50",
+      "text": "Login latency jumped to ~3s right after the latest deploy. Why?",
+      "difficulty": "fresh-incident",
+      "note": "FRESH incident — NO postmortem exists yet. Same family as Q-002 (a sync call added to a hot path violating the service-call guideline).",
+      "tests_generalization_of": "Q-002"
     }
   ]
 }

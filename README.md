@@ -35,11 +35,20 @@ LLM_PROVIDER=mock python run.py --question Q-001     # Windows PS: $env:LLM_PROV
 
 # 2) Real run — copy .env.example to .env and add your free Groq key:
 cp .env.example .env        # then paste GROQ_API_KEY=...
-python run.py               # whole feed;  --question Q-001 for one;  --keep-memory to accumulate
+python run.py               # per-question V1->V2 demo; --question Q-001 for one
 
-# 3) Dashboard:
+# 3) The headline result — cold (no memory) vs warm (learning) ablation:
+python experiment.py        # proves the MEMORY is what improves answers
+
+# 4) Dashboard (shows the cold-vs-warm learning curve + per-question detail):
 streamlit run dashboard.py
 ```
+
+Two entry points:
+- **`run.py`** — the human-in-the-loop demo for one question (V1 → human → lesson → V2).
+- **`experiment.py`** — the ablation: answers the whole feed with memory OFF (cold / plain RAG)
+  vs ON (warm), measuring *first-attempt* quality. The gap between the curves = the value of
+  learning. Fresh, undocumented incidents (Q-006/Q-007) are where it shows most.
 
 Provider is one env var: `LLM_PROVIDER=groq` (free hosted) or `ollama` (local) or `mock` (offline).
 

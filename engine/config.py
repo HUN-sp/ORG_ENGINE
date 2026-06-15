@@ -18,6 +18,7 @@ QUESTIONS_FILE = DATA / "questions" / "question_feed.json"
 GROUND_TRUTH_FILE = DATA / "ground_truth" / "expert_answers.json"
 LESSONS_FILE = DATA / "memory" / "lessons.json"
 RUN_LOG_FILE = DATA / "run_log.json"
+EXPERIMENT_LOG_FILE = DATA / "experiment_log.json"
 
 # ---- LLM provider ----------------------------------------------------------
 # Primary model (answers + reflection). "groq" or "ollama".
@@ -35,6 +36,9 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 # (e.g. Groq 70B) even if a smaller model does the answering.
 JUDGE_PROVIDER = os.getenv("JUDGE_PROVIDER", LLM_PROVIDER).lower()
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", "")  # "" -> use the provider's default model
+# mock means fully offline: don't let a .env JUDGE_PROVIDER=groq leak real API calls.
+if LLM_PROVIDER == "mock":
+    JUDGE_PROVIDER = "mock"
 
 # ---- Knobs -----------------------------------------------------------------
 TOP_K_EVIDENCE = int(os.getenv("TOP_K_EVIDENCE", "6"))   # docs retrieved per question

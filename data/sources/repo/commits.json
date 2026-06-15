@@ -55,6 +55,28 @@
       "files": ["inventory/consumer.py"],
       "diff_summary": "Batches stock-updates Kafka messages for throughput. Unrelated to the June incidents.",
       "released_in": "v4.1.5"
+    },
+    {
+      "hash": "f2a8c9",
+      "author": "Marcus Chen",
+      "date": "2026-06-13",
+      "service": "checkout-svc",
+      "ticket": "NW-1160",
+      "message": "feat(checkout): in-memory cache for product lookups",
+      "files": ["checkout/cache.go"],
+      "diff_summary": "Adds a package-level `var productCache = map[string]Product{}` populated on every product lookup. There is NO size limit, NO TTL, and NO eviction policy — entries are only ever added, never removed.",
+      "released_in": "v4.2.2"
+    },
+    {
+      "hash": "a7b3e2",
+      "author": "Aisha Khan",
+      "date": "2026-06-13",
+      "service": "auth-service",
+      "ticket": "NW-1162",
+      "message": "feat(auth): record an audit-log entry on every login",
+      "files": ["auth/login.js"],
+      "diff_summary": "In the login() handler, adds `await db.insert('audit_log', ...)` — a synchronous, awaited database write executed inline on the login request path before the response is returned. No timeout, not queued.",
+      "released_in": "v4.2.2"
     }
   ]
 }
