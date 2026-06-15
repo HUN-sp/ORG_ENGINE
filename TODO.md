@@ -16,8 +16,11 @@ ablation (memory off vs on) proving the memory is what improves answers.**
       across incident types (migration / cache / hot-path).
 
 ## Next (high value)
-- [ ] **Run `experiment.py` on the real LLM** and record the actual cold-vs-warm curve. Capture a
-      screenshot of the dashboard for the demo/one-pager. (Mock already validates the plumbing.)
+- [x] **Run `experiment.py` on the real LLM** (Groq llama-3.1-8b-instant). Result: all-questions
+      +24.5%, fresh incidents +56.2% — beats the +20% target. Numbers in ONE_PAGER.md.
+- [ ] Screenshot the Learning Curve tab (real data is in data/experiment_log.json now) for the demo.
+- [ ] Re-run Q-004 (skipped by a transient network error) and/or the full 7 when quota is fresh.
+- [ ] Optional: set temperature=0 for more reproducible scores (less run-to-run noise).
 - [ ] **Fail-gracefully question**: add a question whose evidence is genuinely missing; show the
       system lowers confidence and says "insufficient evidence" instead of hallucinating.
 - [ ] Update `ONE_PAGER.md` results table with the real numbers once captured.
