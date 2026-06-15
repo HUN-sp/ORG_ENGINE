@@ -97,6 +97,7 @@ def main():
         rows.append({
             "id": q["id"],
             "question": q["text"],
+            "difficulty": q.get("difficulty", ""),
             "cold_overall": c["overall"],
             "warm_overall": w["overall"],
             "lift": round(w["overall"] - c["overall"], 1),
@@ -113,12 +114,20 @@ def main():
     for r in rows:
         print(f'{r["id"]:10} {r["cold_overall"]:6} {r["warm_overall"]:6} '
               f'{r["lift"]:+6}   {r["lessons_used_warm"]}')
-    cold_avg = round(sum(r["cold_overall"] for r in rows) / len(rows), 1)
-    warm_avg = round(sum(r["warm_overall"] for r in rows) / len(rows), 1)
-    lift = round(warm_avg - cold_avg, 1)
-    pct = round(100 * lift / cold_avg, 1) if cold_avg else 0
+    def summarize(label, group):
+        if not group:
+            return
+        ca = round(sum(r["cold_overall"] for r in group) / len(group), 1)
+        wa = round(sum(r["warm_overall"] for r in group) / len(group), 1)
+        lf = round(wa - ca, 1)
+        pc = round(100 * lf / ca, 1) if ca else 0
+        print(f'{label:34} cold={ca:5}  warm={wa:5}  lift={lf:+5} ({pc:+}%)')
+
     print("=" * 72)
-    print(f'AVERAGE   cold={cold_avg}  warm={warm_avg}  lift={lift:+} ({pct:+}%)   target +20%')
+    summarize("ALL questions", rows)
+    fresh = [r for r in rows if r["difficulty"] == "fresh-incident"]
+    summarize("FRESH incidents (no postmortem)", fresh)
+    print("(target: +20% learning improvement)")
     print(f'\nExperiment log -> {config.EXPERIMENT_LOG_FILE}')
     print("Dashboard:  streamlit run dashboard.py")
 

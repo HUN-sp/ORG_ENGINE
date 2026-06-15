@@ -9,7 +9,7 @@
       "ticket": "NW-1042",
       "message": "feat(orders): add order_tags table and index for tagging",
       "files": ["db/migrations/0042_order_tags.sql"],
-      "diff_summary": "Adds order_tags table. Adds index: `CREATE INDEX idx_orders_tag_id ON orders(tag_id);`  (NOTE: plain CREATE INDEX, not CONCURRENTLY).",
+      "diff_summary": "Adds the order_tags table and an index to speed up tag filtering: `CREATE INDEX idx_orders_tag_id ON orders(tag_id);`",
       "released_in": "v4.2.0 (rolled back)"
     },
     {
@@ -31,7 +31,7 @@
       "ticket": "NW-1120",
       "message": "feat(payments): call fraud-check before authorizing payment",
       "files": ["src/main/java/payments/AuthorizeService.java"],
-      "diff_summary": "In authorize(): adds `fraudClient.score(order)` — a SYNCHRONOUS blocking call with no timeout and no fallback — before authorizing the payment.",
+      "diff_summary": "In authorize(): calls `fraudClient.score(order)` and uses the returned risk score before authorizing the payment.",
       "released_in": "v4.2.x"
     },
     {
@@ -64,7 +64,7 @@
       "ticket": "NW-1160",
       "message": "feat(checkout): in-memory cache for product lookups",
       "files": ["checkout/cache.go"],
-      "diff_summary": "Adds a package-level `var productCache = map[string]Product{}` populated on every product lookup. There is NO size limit, NO TTL, and NO eviction policy — entries are only ever added, never removed.",
+      "diff_summary": "Adds a package-level `var productCache = map[string]Product{}`. On each product lookup, returns the cached Product if present, otherwise loads it and stores it in productCache.",
       "released_in": "v4.2.2"
     },
     {
@@ -75,7 +75,7 @@
       "ticket": "NW-1162",
       "message": "feat(auth): record an audit-log entry on every login",
       "files": ["auth/login.js"],
-      "diff_summary": "In the login() handler, adds `await db.insert('audit_log', ...)` — a synchronous, awaited database write executed inline on the login request path before the response is returned. No timeout, not queued.",
+      "diff_summary": "In the login() handler, after verifying credentials, adds `await db.insert('audit_log', {...})` to record the login, then returns the session.",
       "released_in": "v4.2.2"
     }
   ]

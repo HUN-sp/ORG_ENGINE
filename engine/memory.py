@@ -11,7 +11,9 @@ import re
 
 from . import config
 
-_STOP = set("a an the of to in on for and or is why what who how when where which that this it".split())
+_STOP = set("a an the of to in on for and or is why what who how when where which that this it "
+            "did does do was were get got are be been has have had will would should could can "
+            "we you i over with from into about after before our their its".split())
 
 
 def _tokens(text: str) -> set[str]:
@@ -22,10 +24,13 @@ def _tokens(text: str) -> set[str]:
 # on one incident type (e.g. a migration) must generalize to another (e.g. an OOM) — the
 # reasoning pattern is shared even when the surface vocabulary isn't. Matching on this
 # family is what makes generalization actually fire.
-_CAUSAL = {"why", "cause", "caused", "root", "fail", "failed", "failure", "broke", "broken",
+# Deliberately scoped to FAILURE/INCIDENT intent. Excludes status words like
+# "blocked"/"stuck" so the incident investigation pattern is NOT misapplied to
+# "what's blocking the release?" or "who do I contact?" style questions.
+_CAUSAL = {"cause", "caused", "root", "fail", "failed", "failure", "broke", "broken",
            "crash", "crashed", "oom", "oomkilled", "latency", "slow", "slowed", "spike",
-           "spiked", "delayed", "delay", "error", "errors", "down", "blocked", "stuck",
-           "leak", "outage", "incident", "regression", "degraded"}
+           "spiked", "delayed", "delay", "errored", "outage", "leak",
+           "regression", "degraded", "crashing"}
 
 
 def _is_causal(text: str) -> bool:
