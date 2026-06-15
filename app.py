@@ -46,10 +46,14 @@ def memory():
 
 # ---------- sidebar ----------
 st.sidebar.title("🧠 Reasoning Engine")
+_PROVIDERS = ["openrouter", "groq", "ollama", "mock"]
+_default_idx = _PROVIDERS.index(config.LLM_PROVIDER) if config.LLM_PROVIDER in _PROVIDERS else 0
 provider = st.sidebar.radio(
     "LLM provider",
-    ["groq", "mock", "ollama"],
-    help="mock = offline, no API key (great for a smooth demo). groq = real answers.",
+    _PROVIDERS,
+    index=_default_idx,  # defaults to whatever LLM_PROVIDER is in your .env
+    help="openrouter/groq = real answers (free tiers). ollama = local. "
+         "mock = offline dummy, no API key (smooth demo).",
 )
 # config is read at call-time, so this switches the provider live
 config.LLM_PROVIDER = provider
