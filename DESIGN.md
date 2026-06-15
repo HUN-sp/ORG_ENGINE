@@ -145,9 +145,15 @@ Actor prompt, so the context never blows up and stays on-topic.
   shows is essential (generic feedback barely helps).
 - `uses`/`wins` let you **retire** lessons that never improve answers (quality control).
 
-### 5.3 Retrieval of lessons
-Embed each lesson's `trigger_pattern` + `tags`; at query time, embed the question and pull the
-top-K by similarity (a keyword/tag overlap match is a fine v1 — no vector DB required). Inject as:
+### 5.3 Retrieval of lessons (as implemented)
+At query time we score each lesson by keyword/tag overlap with the question **plus a
+causal-family bonus**: if the question is failure/incident-flavoured (cause, fail, latency, OOM,
+delayed…) and the lesson is too, it gets a relevance boost. This is what makes a lesson learned on a
+*migration* incident generalize to an *OOM* incident — they share no surface vocabulary, but they're
+the same *kind* of question. Non-incident questions (ownership, "what's blocking the release") are
+deliberately excluded so the investigation pattern isn't misapplied. Top-K (K=3) lessons are
+injected into the Actor prompt as actionable rules. (Embeddings would be a drop-in upgrade at scale;
+the corpus is small enough that keyword + causal-family matching suffices.)
 
 ```
 RELEVANT LESSONS FROM PAST CORRECTIONS (apply these):
@@ -155,6 +161,17 @@ RELEVANT LESSONS FROM PAST CORRECTIONS (apply these):
 2. <evidence_rule>
 ...
 ```
+
+### 5.4 Lesson-driven, two-hop *evidence* retrieval
+A learned lesson also changes **what evidence gets retrieved**, not just the reasoning. Plain RAG
+(no lessons) is single-hop: it finds the symptom thread and the recent commit, but a realistic
+commit diff doesn't announce itself as a bug, so the *guideline* it violates is never retrieved
+(different vocabulary). When a lesson is present, the retriever does a **second hop**: it inspects
+the retrieved commit and uses *its* content to pull the related guideline doc — exactly how an
+expert finds the commit, sees it's a cache, then looks up the caching guideline. A mild **recency**
+boost ensures the *recent* deploy's commit wins (incidents are about "the latest deploy"). Cold =
+single hop (misses the guideline); warm = two hops (finds it). This generalizes across incident
+types because it keys off the commit's words, not incident-specific tags.
 
 ---
 
@@ -208,11 +225,14 @@ The system is **LLM-agnostic**: every component calls a single adapter `llm(prom
 provider is a one-line config change. No paid API is required.
 
 - **Python** orchestrator (one file per component: `retriever.py`, `actor.py`, `evaluator.py`,
-  `reflector.py`, `memory.py`) + an `llm_client.py` adapter.
-- **LLM (free options)** — pick one behind the adapter:
-  - *Hosted free tier (recommended, fast, no GPU):* **Groq** (Llama 3.3 70B), **Google Gemini**
-    (Flash, free tier), **OpenRouter** (`:free` models), **Mistral** free tier.
-  - *Fully local (offline, no account):* **Ollama** — `qwen2.5:7b`, `llama3.1:8b`, or `gemma2:9b`.
+  `reflector.py`, `memory.py`) + `pipeline.py` (shared loop) + an `llm_client.py` adapter.
+- **LLM (free options)** — pick one behind the adapter (set `LLM_PROVIDER` in `.env`):
+  - *Hosted free tier (no GPU):* **Groq** (`llama-3.1-8b-instant` — used for the reported results;
+    a smaller model also makes the learning lift more visible), **OpenRouter** (`:free` models, e.g.
+    `google/gemma-4-31b-it:free`), Gemini/Mistral free tiers.
+  - *Fully local (offline, no account):* **Ollama** — `qwen2.5:7b`, `llama3.1:8b`, `gemma2:9b`.
+  - *Offline dummy:* `mock` — canned responses, no key, for testing/demo plumbing.
+  - Free tiers rate-limit; the adapter throttles calls and retries on 429 so runs survive it.
 - **Judge caveat:** the V1→V2 improvement claim is only as trustworthy as the model scoring it. A
   small local model is a weak judge. Mitigation: (a) lean on the **deterministic** metrics —
   `evidence_coverage` is pure set-overlap on source IDs, root-cause match can be keyword-based, no

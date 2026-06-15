@@ -37,6 +37,22 @@ only shows the symptom). That gap is the point.
 violates WIKI-service-calls → commit d9a2f7 fix`. A system that learned the "symptom → commit →
 guideline" pattern from Q-001 should nail Q-002 on its **first** try.
 
+## Fresh, undocumented incidents (Q-006, Q-007) — the real test
+
+These are the hard, realistic case: an alert is firing, there's a recent commit and a relevant
+guideline, but **no postmortem exists yet** — nobody has written down the cause. So a plain-RAG
+baseline can't just copy an answer; it must *investigate*.
+
+- **Q-006 (OOMKilled checkout pods):** `SLK-040` (symptom) + `NW-1160`/commit `f2a8c9` (added an
+  in-memory product cache) → violates `WIKI-resource-guidelines` (caches must be bounded). No postmortem.
+- **Q-007 (login latency):** `SLK-041` (symptom) + `NW-1162`/commit `a7b3e2` (sync audit-log write
+  on the login path) → violates `WIKI-service-calls` (hot-path work must be async). No postmortem.
+
+Important: the **commit diffs are written neutrally** (e.g. "adds a productCache map") — they do *not*
+announce themselves as bugs. Judging them as problems *requires* the guideline, which only the warm
+(learned) system retrieves via its second hop. That's what makes the cold-vs-warm gap real and
+honest rather than handed to the model.
+
 ## Files the engine produces (not authored by hand)
 - `memory/lessons.json` — grows as the system is corrected (starts empty).
 - a run log (your code writes this) — per-question `score_v1`, `score_v2`, evidence coverage,

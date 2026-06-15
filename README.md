@@ -1,71 +1,79 @@
 # Expert-Learning Organizational Reasoning Engine (INT-AI-01)
 
 A small system that answers organizational questions the way a senior engineer would, gets corrected
-by a human expert, and **measurably improves** on the next attempt — without any model fine-tuning.
+by a human expert, and **measurably improves** afterward — **without any model fine-tuning**.
 
-## What's here so far
-- **`DESIGN.md`** — the learning loop + memory architecture, grounded in **Reflexion**
-  (arXiv:2303.11366) and **Self-Refine** (arXiv:2303.17651). Read this first.
-- **`data/`** — a complete synthetic DevOps dataset (the *Northwind* org). See `data/README.md`.
+On fresh, undocumented incidents it improved root-cause accuracy by **+56%** (cold vs. warm
+ablation, Groq Llama-3.1-8B), beating the project's ≥20% target. See `ONE_PAGER.md`.
 
 ## The core idea (30 seconds)
-The LLM never changes. A growing **notebook of lessons** — distilled from human corrections —
-changes. Before answering, the system retrieves the relevant lessons and injects them into the
-prompt. Two learning modes:
-- **Self-Refine** → re-answer the *same* question better (the V1→V2 deliverable).
-- **Reflexion** → a lesson learned on one question improves *new, similar* questions (real learning).
+The LLM never changes. What grows is a **notebook of lessons** distilled from human corrections.
+Before answering, the system retrieves the relevant lessons and uses them to investigate better.
+It's **RAG + a learning loop** — RAG is the floor; the learning is the point. Two modes:
+- **Self-Refine** → re-answer the *same* question better (the V1→V2 demo).
+- **Reflexion** → a lesson learned on one incident improves *new, unseen* incidents (real learning).
 
-## Status
-- [x] Learning-loop & memory architecture designed (`DESIGN.md`)
-- [x] Interconnected synthetic dataset (4 sources, 5 questions, ground truth)
-- [x] `engine/` components: `retriever`, `actor`, `evaluator`, `reflector`, `memory`, `llm_client`
-- [x] Run loop (`run.py`) + run log + lesson-aware retrieval
-- [x] Dashboard (`dashboard.py`, V1 vs V2 trend)
-- [x] Offline `mock` LLM provider (runs the whole loop with no API key)
-- [ ] Real run with a free LLM (Groq / Ollama)
-- [ ] 3-min demo + one-pager
+## What's here
+| File | What |
+|---|---|
+| `DESIGN.md` | Learning loop + memory architecture (grounded in Reflexion & Self-Refine). Read first. |
+| `ONE_PAGER.md` | Architecture, assumptions, **real results**, what's next. |
+| `VIDEO_SCRIPT.md` | ~9-min demo script mapped to the assignment flow. |
+| `app.py` | **Interactive UI** — ask a question, watch it learn (the main demo). |
+| `run.py` | CLI: the full V1→human→lesson→V2 cycle for one question. |
+| `experiment.py` | The ablation that produces the cold-vs-warm learning curve. |
+| `dashboard.py` | Standalone chart view of the experiment results. |
+| `engine/` | `retriever, actor, evaluator, reflector, memory, pipeline, llm_client`. |
+| `data/` | Synthetic *Northwind* DevOps dataset (4 sources, 7 questions, ground truth). See `data/README.md`. |
 
 ## Run it
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env          # then add a free key (OpenRouter or Groq)
 
-# 1) Smoke test — no API key needed (proves the plumbing):
-LLM_PROVIDER=mock python run.py --question Q-001     # Windows PS: $env:LLM_PROVIDER="mock"; python run.py --question Q-001
+# Interactive UI — the main demo (pick a question, watch it get corrected & improve):
+streamlit run app.py
 
-# 2) Real run — copy .env.example to .env and add your free Groq key:
-cp .env.example .env        # then paste GROQ_API_KEY=...
-python run.py               # per-question V1->V2 demo; --question Q-001 for one
+# CLI: one question, full cycle:
+python run.py --question Q-001
 
-# 3) The headline result — cold (no memory) vs warm (learning) ablation:
-python experiment.py        # proves the MEMORY is what improves answers
-
-# 4) Dashboard (shows the cold-vs-warm learning curve + per-question detail):
-streamlit run dashboard.py
+# The headline result — cold (no memory) vs warm (learning) ablation:
+python experiment.py                              # full feed (~40 calls)
+python experiment.py --questions Q-001,Q-006,Q-007  # focused subset (~18 calls, free-tier friendly)
 ```
 
-Two entry points:
-- **`run.py`** — the human-in-the-loop demo for one question (V1 → human → lesson → V2).
-- **`experiment.py`** — the ablation: answers the whole feed with memory OFF (cold / plain RAG)
-  vs ON (warm), measuring *first-attempt* quality. The gap between the curves = the value of
-  learning. Fresh, undocumented incidents (Q-006/Q-007) are where it shows most.
-
-Provider is one env var: `LLM_PROVIDER=groq` (free hosted) or `ollama` (local) or `mock` (offline).
+**Providers** (set `LLM_PROVIDER` in `.env`, or switch live in the UI sidebar):
+`openrouter` and `groq` = real answers on free tiers · `ollama` = local · `mock` = offline dummy
+(no key, instant — for testing/demo). Free tiers rate-limit; the client throttles and retries so
+runs survive it.
 
 ## Architecture at a glance
 
 ```
-question ─► Retriever ─┐                         ┌─► Evaluator ─► scores (V1)
-        (lesson-aware) │                         │
-                       ▼                         │
-            Actor (LLM) ─► answer + trace + cited evidence + confidence
+question ─► Retriever ─┐                         ┌─► Evaluator ─► scores (vs. human = gold)
+   (lesson-aware,      │                         │
+    two-hop)           ▼                         │
+            Actor (LLM) ─► answer + reasoning trace + cited evidence + confidence
                        ▲                         │
    Memory (lessons) ───┘                         ▼
         ▲                         human answer ─► Reflector ─► gap analysis ─► LESSON ─► Memory
         └──────────────── re-run (V2) ◄──────────────────────────────────────────────────┘
 ```
+A learned lesson does two things: it guides the Actor's reasoning, and it triggers a **second
+retrieval hop** (inspect the recent commit → pull the guideline it may violate) that plain RAG skips.
 
-## Suggested build order / demo
-See `DESIGN.md` §10. The demo moment: ask Q-001 → weak V1 → human answer → gap analysis →
-lesson → improved V2 → show the measured gain → then ask Q-002 and show it's already better at V1
-(generalization). The `mock` provider already reproduces this end-to-end.
+## Demo path
+Reset memory (UI sidebar) → run **Q-001** (it learns a lesson) → run **Q-006**, a fresh OOM incident
+it's never seen: it already solves it at V1 by reusing the lesson. Then open the **Learning Curve**
+tab (after `python experiment.py`) for the cold-vs-warm numbers. Full walkthrough in `VIDEO_SCRIPT.md`.
+
+## Status
+- [x] Learning loop + two-tier memory (Reflexion + Self-Refine)
+- [x] Synthetic dataset: 4 sources, 7 questions (incl. fresh undocumented incidents), ground truth
+- [x] `engine/` components + shared pipeline
+- [x] CLI (`run.py`), ablation (`experiment.py`), interactive UI (`app.py`), dashboard
+- [x] Providers: OpenRouter / Groq / Ollama / offline mock; rate-limit handling
+- [x] Real run + measured result (+56% fresh incidents, +24.5% overall) → `ONE_PAGER.md`
+- [x] One-pager + video script
+- [ ] Record the video; optional polish (fail-gracefully question, temperature=0 reproducibility)

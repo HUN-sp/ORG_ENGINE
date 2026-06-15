@@ -26,8 +26,9 @@ human expert answer ─► Reflector ─► gap analysis ─► LESSON ─► Me
                           re-run with lesson ─► Version 2 ◄───────────┘
 Evaluator scores every answer vs. the human answer (gold).
 ```
-Components: `retriever` (keyword + tag + lesson-driven query expansion), `actor`, `evaluator`,
-`reflector`, `memory` (the lesson store), behind a swappable `llm_client` (Groq / Ollama / mock).
+Components: `retriever` (keyword + tag + recency, with a lesson-driven **two-hop** that pulls the
+guideline a commit may violate), `actor`, `evaluator`, `reflector`, `memory` (the lesson store),
+behind a swappable `llm_client` (OpenRouter / Groq / Ollama / mock).
 
 ## Two kinds of learning
 1. **Within a question (Self-Refine):** the gap vs. the expert → a lesson → a better V2.
