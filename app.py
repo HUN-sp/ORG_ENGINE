@@ -79,10 +79,34 @@ with tab_ask:
     qid = pick.split(" — ")[0]
     q = next(x for x in qs if x["id"] == qid)
 
-    if st.button("▶️ Run the learning cycle", type="primary"):
+    # Who plays the "human expert" that corrects the AI?
+    expert_src = st.radio(
+        "The 'human' correction comes from:",
+        ["📁 Saved expert (from file)", "🧑 I'll type it myself (live human-in-the-loop)"],
+        horizontal=True,
+        help="Saved = uses data/ground_truth. Live = you play the senior engineer on screen.",
+    )
+    live = expert_src.startswith("🧑")
+    expert = dict(gt[qid])  # start from the file's entry (keeps gold_evidence for scoring)
+    ready = True
+    if live:
+        with st.expander("Peek at the saved expert answer (reference)"):
+            st.write(gt[qid]["answer"])
+            st.caption(f'Root cause: {gt[qid].get("root_cause","N/A")}')
+        typed = st.text_area("Your expert answer (this becomes the ground truth the AI learns from)",
+                             height=140, placeholder="Type the correct answer as a senior engineer would…")
+        typed_rc = st.text_input("Root cause in one line (optional)")
+        if typed.strip():
+            expert = {**gt[qid], "expert": "You (live)", "answer": typed.strip(),
+                      "root_cause": typed_rc.strip() or gt[qid].get("root_cause", "N/A")}
+        else:
+            ready = False
+            st.info("Type your expert answer above, then run.")
+
+    if st.button("▶️ Run the learning cycle", type="primary", disabled=not ready):
         with st.spinner(f"Investigating with provider='{provider}' …"):
             st.session_state["result"] = pipeline.process_question(
-                q["text"], gt[qid], retriever(), mem
+                q["text"], expert, retriever(), mem
             )
         st.rerun()
 
